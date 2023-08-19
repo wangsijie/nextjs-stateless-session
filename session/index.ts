@@ -1,6 +1,7 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { decrypt, encrypt } from "./encrypt";
 
 export type Session = {
   username: string;
@@ -11,7 +12,12 @@ export const getSession = async (): Promise<Session | null> => {
   const session = cookieStore.get("session");
 
   if (session?.value) {
-    return JSON.parse(session.value) as Session;
+    try {
+      const decrypted = decrypt(session.value);
+      return JSON.parse(decrypted) as Session;
+    } catch {
+      // Ignore invalid session
+    }
   }
 
   return null;
@@ -19,7 +25,8 @@ export const getSession = async (): Promise<Session | null> => {
 
 export const setSession = async (session: Session) => {
   const cookieStore = cookies();
-  cookieStore.set("session", JSON.stringify(session));
+  const encrypted = encrypt(JSON.stringify(session));
+  cookieStore.set("session", encrypted);
 };
 
 export const removeSession = async () => {
